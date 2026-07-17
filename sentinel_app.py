@@ -6,10 +6,6 @@ app = Flask(__name__)
 
 print("Step 1: Starting...")
 
-# ----------------------------
-# Load Model
-# ----------------------------
-
 print("Step 2: Loading Model...")
 model = joblib.load("models/sentinel_incident_xgboost.pkl")
 print("✓ Model Loaded")
@@ -24,14 +20,18 @@ print("✓ Feature Encoders Loaded")
 
 print("✓ API Ready!")
 
-# ----------------------------
-# Home Page
-# ----------------------------
 @app.route("/")
 def home():
     return jsonify({
         "message": "Microsoft Sentinel AI Incident Prioritization API Running"
     })
+
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    try:
+        data = request.json
+        print("Received JSON:", data)
 
         expected_columns = [
             "Flow Duration",
@@ -49,14 +49,12 @@ def home():
             "SessionDuration"
         ]
 
-        # Create a row with default value 0 for every feature
         row = {}
         for col in expected_columns:
             row[col] = data.get(col, 0)
 
         df = pd.DataFrame([row])
 
-        # Convert everything to numeric
         for col in expected_columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
@@ -97,7 +95,7 @@ def home():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    # ----------------------------
+
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(debug=True)
