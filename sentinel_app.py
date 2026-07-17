@@ -28,25 +28,12 @@ print("✓ API Ready!")
 # Home Page
 # ----------------------------
 
-@app.route("/")
-def home():
-    return jsonify({
-        "message": "Microsoft Sentinel AI Incident Prioritization API Running"
-    })
-
-
-# ----------------------------
-# Prediction API
-# ----------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         data = request.json
         print("Received JSON:", data)
 
-        df = pd.DataFrame([data])
-
-        # Arrange columns exactly as used during training
         expected_columns = [
             "Flow Duration",
             "Total Fwd Packets",
@@ -63,22 +50,25 @@ def predict():
             "SessionDuration"
         ]
 
-        df = df[expected_columns]
+        # Create a row with default value 0 for every feature
+        row = {}
+        for col in expected_columns:
+            row[col] = data.get(col, 0)
 
-        # Encode categorical features
-        for col in ["TrafficVolume", "SessionDuration"]:
-            df[col] = feature_encoders[col].transform(df[col])
+        df = pd.DataFrame([row])
 
-        # Prediction
+        # Convert everything to numeric
+        for col in expected_columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
         prediction = int(model.predict(df)[0])
         probability = model.predict_proba(df)[0]
 
-        severity = str(severity_encoder.inverse_transform([prediction])[0])
+        severity = severity_encoder.inverse_transform([prediction])[0]
 
-        confidence = float(round(float(max(probability)) * 100, 2))
+        confidence = round(float(max(probability)) * 100, 2)
         risk_score = int(confidence)
 
-        # Priority
         if severity == "High":
             priority = "P1"
             action = "Immediate Investigation Required"
@@ -89,28 +79,25 @@ def predict():
             priority = "P3"
             action = "Monitor"
 
-        top_features = [
-            "Flow Duration",
-            "Flow Bytes/s",
-            "Packet Length Mean",
-            "Avg Packet Size",
-            "NetworkRiskScore"
-        ]
-
         return jsonify({
             "severity": severity,
             "confidence": confidence,
             "risk_score": risk_score,
             "priority": priority,
             "recommended_action": action,
-            "top_features": top_features
+            "top_features": [
+                "Flow Duration",
+                "Flow Bytes/s",
+                "Packet Length Mean",
+                "Avg Packet Size",
+                "NetworkRiskScore"
+            ]
         })
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    
     # ----------------------------
 
 if __name__ == "__main__":
