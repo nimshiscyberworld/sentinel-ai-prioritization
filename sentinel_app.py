@@ -27,12 +27,11 @@ print("✓ API Ready!")
 # ----------------------------
 # Home Page
 # ----------------------------
-
-@app.route("/predict", methods=["POST"])
-def predict():
-    try:
-        data = request.json
-        print("Received JSON:", data)
+@app.route("/")
+def home():
+    return jsonify({
+        "message": "Microsoft Sentinel AI Incident Prioritization API Running"
+    })
 
         expected_columns = [
             "Flow Duration",
